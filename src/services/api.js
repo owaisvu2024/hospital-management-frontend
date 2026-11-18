@@ -2,7 +2,7 @@ import axios from 'axios';
 
 
 const API = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8090/api',
+    baseURL: `${import.meta.env.VITE_API_URL || 'https://hospital-management-backend-2-00oy.onrender.com'}/api`,
 });
 
 // 1. Axios Request Interceptor: Har request se pehle token attach karega

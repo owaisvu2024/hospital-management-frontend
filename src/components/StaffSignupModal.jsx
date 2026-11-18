@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 const StaffSignupModal = ({ isOpen, onClose }) => {
     const [formData, setFormData] = useState({
@@ -19,15 +19,8 @@ const StaffSignupModal = ({ isOpen, onClose }) => {
         setError('');
 
         try {
-            // LocalStorage se Admin ka JWT Token uthana hai
-            const token = localStorage.getItem('token'); 
-            console.log("Mera Token yeh hai:", token);
-
-            await axios.post(
-                'http://localhost:8090/api/admin/add-user', 
-                formData, 
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            // Ab token aur URL manually dene ki zaroorat nahi, api.js interceptor sab handle kar lega!
+            await api.post('/api/admin/add-user', formData);
 
             setMessage('✅ User successfully registered by Admin!');
             setFormData({ userName: '', password: '', roles: ['DOCTOR'] });
