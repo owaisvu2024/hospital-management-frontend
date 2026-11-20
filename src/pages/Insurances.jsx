@@ -2,18 +2,41 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../services/api';
 
+const getId = (ins) => ins.insuranceId || ins.id;
+
+// validUntil aaj se pehle ho to Expired, warna Active
+const isExpired = (validUntil) => {
+  if (!validUntil) return false;
+  const end = new Date(validUntil);
+  end.setHours(23, 59, 59, 999);
+  return end < new Date();
+};
+
+function ValidityPill({ validUntil }) {
+  const expired = isExpired(validUntil);
+  return (
+    <span
+      className={`px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${
+        expired
+          ? 'bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-300'
+          : 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
+      }`}
+    >
+      {expired ? 'Expired' : 'Active'}
+    </span>
+  );
+}
+
 function Insurances() {
   const [insurances, setInsurances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(''); // 🌟 Inline success banner state
-  
-  // Pagination states
-  const [page, setPage] = useState(0);      
-  const [size, setSize] = useState(5);      
-  const [totalPages, setTotalPages] = useState(0); 
+  const [success, setSuccess] = useState('');
 
-  // Search state
+  const [page, setPage] = useState(0);
+  const [size] = useState(5);
+  const [totalPages, setTotalPages] = useState(0);
+
   const [insuranceId, setInsuranceId] = useState('');
   const [searchedInsurance, setSearchedInsurance] = useState(null);
 
@@ -23,12 +46,12 @@ function Insurances() {
     setLoading(true);
     API.get(`/insurance/getall?page=${page}&size=${size}`)
       .then((response) => {
-        setInsurances(response.data.content || response.data);      
-        setTotalPages(response.data.totalPages || 1);  
+        setInsurances(response.data.content || response.data);
+        setTotalPages(response.data.totalPages || 1);
         setLoading(false);
       })
       .catch((err) => {
-        console.error("Error fetching insurances:", err);
+        console.error('Error fetching insurances:', err);
         setError('Failed to load insurance records.');
         setLoading(false);
       });
@@ -38,23 +61,23 @@ function Insurances() {
     fetchInsurances();
   }, [page, size]);
 
-  // Delete Insurance
   const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to delete this insurance policy?')) {
       API.delete(`/insurance/delete/${id}`)
         .then(() => {
           setSuccess('Insurance policy deleted successfully!');
-          setTimeout(() => setSuccess(''), 3000); // 3 seconds baad auto-clear
-          fetchInsurances(); 
+          setTimeout(() => setSuccess(''), 3000);
+          setSearchedInsurance(null);
+          setInsuranceId('');
+          fetchInsurances();
         })
         .catch((err) => {
-          console.error("Error deleting insurance:", err);
+          console.error('Error deleting insurance:', err);
           setError('Failed to delete insurance policy.');
         });
     }
   };
 
-  // Search Insurance by ID
   const handleSearch = (e) => {
     e.preventDefault();
     if (!insuranceId) {
@@ -67,175 +90,173 @@ function Insurances() {
         setError('');
       })
       .catch((err) => {
-        console.error("Insurance not found", err);
+        console.error('Insurance not found', err);
         setError('Insurance policy with this ID was not found.');
         setSearchedInsurance(null);
       });
   };
 
+  const rows = searchedInsurance ? [searchedInsurance] : insurances;
+
+  const editBtn =
+    'h-9 px-3 rounded-lg text-sm font-semibold border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-ink-700 transition';
+  const delBtn =
+    'h-9 px-3 rounded-lg text-sm font-semibold border border-red-300 dark:border-red-900 text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950 transition';
+  const pageBtn = (disabled) =>
+    `h-10 px-4 rounded-xl text-sm font-semibold text-white transition ${
+      disabled ? 'bg-gray-300 dark:bg-ink-700 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+    }`;
+
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-3 sm:p-6 lg:p-8 transition-colors duration-200">
-      <div className="max-w-6xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-        
-        {/* Header & Actions */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">Insurance Management Hub</h1>
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
-            <button
-              onClick={() => navigate('/add-insurance')}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition text-center w-full sm:w-auto"
-            >
-              + Add New Insurance
-            </button>
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="bg-gray-700 dark:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 dark:hover:bg-gray-700 transition text-center w-full sm:w-auto"
-            >
-              Back to Dashboard
-            </button>
-          </div>
+    <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-5">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Insurance</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400">Policies, providers and validity dates</p>
         </div>
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="hidden md:inline-flex h-11 items-center px-4 rounded-xl font-semibold bg-gray-700 dark:bg-ink-700 text-white hover:bg-gray-800 dark:hover:bg-ink-800 transition"
+        >
+          Back to Dashboard
+        </button>
+        <button
+          onClick={() => navigate('/add-insurance')}
+          className="h-11 px-4 rounded-xl font-semibold bg-green-600 hover:bg-green-700 text-white transition whitespace-nowrap"
+        >
+          + Add<span className="hidden sm:inline"> Insurance</span>
+        </button>
+      </div>
 
-        {/* Success & Error Banners */}
-        {success && (
-          <div className="bg-green-50 dark:bg-green-900/35 border-l-4 border-green-500 p-3 mb-4">
-            <p className="text-green-700 dark:text-green-300 text-sm font-medium">{success}</p>
-          </div>
-        )}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/35 border-l-4 border-red-500 p-3 mb-4">
-            <p className="text-red-700 dark:text-red-300 text-sm font-medium">{error}</p>
-          </div>
-        )}
+      {success && (
+        <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-900 rounded-xl p-3 mb-4">
+          <p className="text-green-700 dark:text-green-300 text-sm font-medium">{success}</p>
+        </div>
+      )}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 rounded-xl p-3 mb-4">
+          <p className="text-red-700 dark:text-red-300 text-sm font-medium">{error}</p>
+        </div>
+      )}
 
-        {/* Search Bar - Compact & Side by Side */}
-        <form onSubmit={handleSearch} className="flex gap-2 mb-6">
-          <input
-            type="number"
-            placeholder="Search by Insurance ID..."
-            value={insuranceId}
-            onChange={(e) => setInsuranceId(e.target.value)}
-            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white text-sm sm:text-base"
-          />
+      {/* Search */}
+      <form onSubmit={handleSearch} className="flex gap-2 mb-5">
+        <input
+          type="number"
+          placeholder="Search by insurance ID"
+          value={insuranceId}
+          onChange={(e) => setInsuranceId(e.target.value)}
+          className="flex-1 min-w-0 h-12 px-4 rounded-xl border border-gray-300 dark:border-ink-700 bg-white dark:bg-ink-800 text-gray-800 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-teal-400"
+        />
+        <button
+          type="submit"
+          className="h-12 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition"
+        >
+          Search
+        </button>
+        {searchedInsurance && (
           <button
-            type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2 rounded-lg font-semibold transition text-sm sm:text-base shrink-0"
+            type="button"
+            onClick={() => { setSearchedInsurance(null); setInsuranceId(''); setError(''); }}
+            className="h-12 px-4 rounded-xl bg-gray-400 dark:bg-ink-700 hover:bg-gray-500 text-white font-semibold transition"
           >
-            Search
+            Clear
           </button>
-          {searchedInsurance && (
-            <button
-              type="button"
-              onClick={() => { setSearchedInsurance(null); setInsuranceId(''); setError(''); }}
-              className="bg-gray-400 dark:bg-gray-600 hover:bg-gray-500 dark:hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded-lg transition text-sm sm:text-base shrink-0"
-            >
-              Clear
-            </button>
-          )}
-        </form>
+        )}
+      </form>
 
-        {/* Insurances Table Container */}
-        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-          <table className="min-w-full text-left border-collapse text-xs sm:text-sm">
+      {rows.length === 0 && (
+        <div className="bg-white dark:bg-ink-800 border border-gray-200 dark:border-ink-700 rounded-2xl p-8 text-center text-gray-500 dark:text-slate-400">
+          {loading ? 'Loading insurance records...' : 'No insurance policies available.'}
+        </div>
+      )}
+
+      {/* Desktop table */}
+      {rows.length > 0 && (
+        <div className="hidden md:block bg-white dark:bg-ink-800 border border-gray-200 dark:border-ink-700 rounded-2xl overflow-hidden">
+          <table className="w-full text-left text-sm">
             <thead>
-              <tr className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 uppercase">
-                <th className="py-3 px-3 sm:px-4 whitespace-nowrap">ID</th>
-                <th className="py-3 px-3 sm:px-4 whitespace-nowrap">Policy Number</th>
-                <th className="py-3 px-3 sm:px-4 whitespace-nowrap">Provider</th>
-                <th className="py-3 px-3 sm:px-4 whitespace-nowrap">Valid Until</th>
-                <th className="py-3 px-3 sm:px-4 text-center whitespace-nowrap">Actions</th>
+              <tr className="bg-gray-100 dark:bg-ink-900 text-gray-600 dark:text-slate-400 uppercase text-xs tracking-wide">
+                <th className="py-3 px-5">ID</th>
+                <th className="py-3 px-5">Policy Number</th>
+                <th className="py-3 px-5">Provider</th>
+                <th className="py-3 px-5">Valid Until</th>
+                <th className="py-3 px-5">Status</th>
+                <th className="py-3 px-5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {searchedInsurance ? (
-                <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                  <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{searchedInsurance.insuranceId || searchedInsurance.id}</td>
-                  <td className="py-3 px-3 sm:px-4 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">{searchedInsurance.policyNumber}</td>
-                  <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{searchedInsurance.provider}</td>
-                  <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{searchedInsurance.validUntil}</td>
-                  <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => navigate(`/edit-insurance/${searchedInsurance.insuranceId || searchedInsurance.id}`)}
-                        className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 text-xs sm:text-sm"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(searchedInsurance.insuranceId || searchedInsurance.id)}
-                        className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-xs sm:text-sm"
-                      >
-                        Delete
-                      </button>
+            <tbody className="divide-y divide-gray-200 dark:divide-ink-700">
+              {rows.map((ins) => (
+                <tr key={getId(ins)} className="hover:bg-gray-50 dark:hover:bg-ink-700/40">
+                  <td className="py-3 px-5 text-gray-500 dark:text-slate-400">{getId(ins)}</td>
+                  <td className="py-3 px-5 font-semibold text-gray-800 dark:text-slate-100">{ins.policyNumber}</td>
+                  <td className="py-3 px-5 text-gray-800 dark:text-slate-200">{ins.provider}</td>
+                  <td className="py-3 px-5 text-gray-500 dark:text-slate-400 whitespace-nowrap">{ins.validUntil}</td>
+                  <td className="py-3 px-5"><ValidityPill validUntil={ins.validUntil} /></td>
+                  <td className="py-3 px-5">
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => navigate(`/edit-insurance/${getId(ins)}`)} className={editBtn}>Edit</button>
+                      <button onClick={() => handleDelete(getId(ins))} className={delBtn}>Delete</button>
                     </div>
                   </td>
                 </tr>
-              ) : insurances.length > 0 ? (
-                insurances.map((ins) => (
-                  <tr key={ins.insuranceId || ins.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{ins.insuranceId || ins.id}</td>
-                    <td className="py-3 px-3 sm:px-4 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">{ins.policyNumber}</td>
-                    <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{ins.provider}</td>
-                    <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{ins.validUntil}</td>
-                    <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => navigate(`/edit-insurance/${ins.insuranceId || ins.id}`)}
-                          className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 text-xs sm:text-sm"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(ins.insuranceId || ins.id)}
-                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-xs sm:text-sm"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="5" className="py-4 text-center text-gray-500 dark:text-gray-400">
-                    {loading ? 'Loading insurance records...' : 'No insurance policies available.'}
-                  </td>
-                </tr>
-              )}
+              ))}
             </tbody>
           </table>
         </div>
+      )}
 
-        {/* Pagination Controls */}
-        {!searchedInsurance && totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button
-              disabled={page === 0}
-              onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
-              className={`w-full sm:w-auto px-4 py-2 rounded-lg font-semibold text-white ${
-                page === 0 ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-              }`}
+      {/* Mobile cards */}
+      {rows.length > 0 && (
+        <div className="md:hidden space-y-3">
+          {rows.map((ins) => (
+            <div
+              key={getId(ins)}
+              className="bg-white dark:bg-ink-800 border border-gray-200 dark:border-ink-700 rounded-2xl p-4 space-y-3"
             >
-              Previous
-            </button>
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 shrink-0 rounded-full flex items-center justify-center text-lg bg-yellow-100 dark:bg-yellow-400/15">
+                  🛡️
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 dark:text-white truncate">{ins.policyNumber}</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">ID {getId(ins)} · {ins.provider}</div>
+                </div>
+                <ValidityPill validUntil={ins.validUntil} />
+              </div>
+              <div className="text-sm text-gray-500 dark:text-slate-400">Valid until {ins.validUntil}</div>
+              <div className="flex gap-2">
+                <button onClick={() => navigate(`/edit-insurance/${getId(ins)}`)} className={`flex-1 h-10 ${editBtn}`}>Edit</button>
+                <button onClick={() => handleDelete(getId(ins))} className={`flex-1 h-10 ${delBtn}`}>Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-            <span className="text-gray-700 dark:text-gray-300 font-medium text-sm sm:text-base">
-              Page {page + 1} of {totalPages}
-            </span>
-
-            <button
-              disabled={page + 1 >= totalPages}
-              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages - 1))}
-              className={`w-full sm:w-auto px-4 py-2 rounded-lg font-semibold text-white ${
-                page + 1 >= totalPages ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-              }`}
-            >
-              Next
-            </button>
-          </div>
-        )}
-
-      </div>
+      {/* Pagination */}
+      {!searchedInsurance && totalPages > 1 && (
+        <div className="flex items-center justify-between gap-3 mt-6">
+          <button
+            disabled={page === 0}
+            onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
+            className={pageBtn(page === 0)}
+          >
+            Previous
+          </button>
+          <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
+            Page {page + 1} of {totalPages}
+          </span>
+          <button
+            disabled={page + 1 >= totalPages}
+            onClick={() => setPage((prev) => Math.min(prev + 1, totalPages - 1))}
+            className={pageBtn(page + 1 >= totalPages)}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }

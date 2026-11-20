@@ -1,93 +1,126 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../services/api';
+import hospitalLogo from '../assets/hospital-logo.png';
 
 function Login() {
-    // 1. Form ki inputs (username aur password) ko yaad rakhne ke liye useState
-    const [credentials, setCredentials] = useState({
-        userName: '',
-        password: ''
-    });
-
+    const [credentials, setCredentials] = useState({ userName: '', password: '' });
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [slow, setSlow] = useState(false); // server dair se jawab de to message
     const navigate = useNavigate();
 
-    // 2. Jab user input box mein kuch type karega, yeh function state update karega
+    useEffect(() => {
+        // Saved theme lagao (login pe Navbar nahi hota)
+        document.documentElement.classList.toggle('dark', localStorage.getItem('theme') === 'dark');
+
+        // Render ko pehle se jaga do. Jawab kuch bhi aaye, server uth jayega.
+        API.get('/').catch(() => {});
+    }, []);
+
     const handleChange = (e) => {
-        setCredentials({
-            ...credentials,
-            [e.target.name]: e.target.value
-        });
+        setCredentials({ ...credentials, [e.target.name]: e.target.value });
     };
 
-    // 3. Jab user Login button dabayega, yeh function chalega
     const handleSubmit = async (e) => {
-        e.preventDefault(); // Page ko reload hone se bachata hai
+        e.preventDefault();
         setError('');
+        setLoading(true);
+        const timer = setTimeout(() => setSlow(true), 4000);
 
         try {
-            // Spring Boot backend ko POST request bhej rahe hain
             const response = await API.post('/auth/login', credentials);
-            
-            // Console mein check karne ke liye ke backend exactly kya bhej raha hai
-            console.log("Backend Response:", response.data);
-
-            // 💡 Smart fix: Chahe token object mein ho ya seedha string ho, yeh utha lega
             const token = response.data.token || response.data.accessToken || response.data;
-            
-            // LocalStorage mein save kar do
             localStorage.setItem('token', token);
-            
-            alert('Login Successful!');
-            navigate('/dashboard'); // Dashboard par bhej do
+            navigate('/dashboard');
         } catch (err) {
-            console.error("Login Error:", err);
-            setError('Invalid username or password!');
+            console.error('Login Error:', err);
+            if (err.response) {
+                setError('Invalid username or password!');
+            } else {
+                setError('Server se jawab nahi aaya. Thori der baad dobara try karo.');
+            }
+        } finally {
+            clearTimeout(timer);
+            setSlow(false);
+            setLoading(false);
         }
     };
 
+    const inputClass =
+        'w-full h-12 px-3.5 rounded-xl border border-gray-300 dark:border-ink-700 bg-white dark:bg-ink-950 text-gray-800 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-teal-400';
+
     return (
-        <div className="flex justify-center items-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4 transition-colors duration-200">
-            <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-lg shadow-md w-full max-w-md border border-gray-200 dark:border-gray-700">
-                <h2 className="text-xl sm:text-2xl font-bold mb-6 text-center text-blue-600 dark:text-blue-400">Hospital Login</h2>
+        <div className="relative flex justify-center items-center min-h-screen bg-gray-100 dark:bg-ink-900 p-4 transition-colors duration-200">
+            <form
+                onSubmit={handleSubmit}
+                className="bg-white dark:bg-ink-800 p-6 sm:p-8 rounded-2xl shadow-md w-full max-w-md border border-gray-200 dark:border-ink-700"
+            >
+                <div className="flex flex-col items-center gap-2 mb-6">
+                    <img
+                        src={hospitalLogo}
+                        alt="MedCore Logo"
+                        className="w-14 h-14 rounded-xl object-cover border border-gray-200 dark:border-ink-700"
+                    />
+                    <h2 className="text-2xl font-bold text-blue-600 dark:text-teal-300">Hospital Login</h2>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">MedCore Hospital Management System</p>
+                </div>
 
                 {error && (
-                    <div className="bg-red-50 dark:bg-red-900/35 border-l-4 border-red-500 p-3 mb-4">
-                        <p className="text-red-500 dark:text-red-300 text-sm">{error}</p>
+                    <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 rounded-xl p-3 mb-4">
+                        <p className="text-red-600 dark:text-red-300 text-sm">{error}</p>
                     </div>
                 )}
 
                 <div className="mb-4">
-                    <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Username</label>
+                    <label className="block text-gray-700 dark:text-slate-200 text-sm font-semibold mb-1.5">Username</label>
                     <input
                         type="text"
                         name="userName"
                         value={credentials.userName}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                        placeholder="Enter username"
+                        autoComplete="username"
+                        className={inputClass}
                         required
                     />
                 </div>
 
                 <div className="mb-6">
-                    <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Password</label>
+                    <label className="block text-gray-700 dark:text-slate-200 text-sm font-semibold mb-1.5">Password</label>
                     <input
                         type="password"
                         name="password"
                         value={credentials.password}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                        placeholder="Enter password"
+                        autoComplete="current-password"
+                        className={inputClass}
                         required
                     />
                 </div>
 
                 <button
                     type="submit"
-                    className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold"
+                    disabled={loading}
+                    className="w-full h-12 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition"
                 >
-                    Login
+                    {loading && (
+                        <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    )}
+                    {loading ? 'Logging in...' : 'Login'}
                 </button>
+
+                {slow && (
+                    <p className="mt-4 text-center text-sm text-amber-600 dark:text-amber-300">
+                        Server start ho raha hai, 30-60 second lag sakte hain. Page band mat karo.
+                    </p>
+                )}
             </form>
+
+            <p className="absolute bottom-4 inset-x-0 text-center text-xs text-gray-500 dark:text-slate-500">
+                Developed by Owais Shuja
+            </p>
         </div>
     );
 }

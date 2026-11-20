@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import API from '../services/api';
 
+const inputClass =
+  'w-full h-11 px-3.5 rounded-xl border border-gray-300 dark:border-ink-700 bg-white dark:bg-ink-950 text-gray-800 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-teal-400';
+const labelClass = 'block text-sm font-semibold text-gray-700 dark:text-slate-200 mb-1.5';
+
 function EditPatient() {
   const { id } = useParams();
   const [formData, setFormData] = useState({
@@ -9,11 +13,12 @@ function EditPatient() {
     gender: 'Male',
     email: '',
     bloodGroup: '',
-    insuranceId: ''
+    insuranceId: '',
   });
-  const [loading, setLoading] = useState(true);
+  const [fetching, setFetching] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(''); // 🌟 Success banner state
+  const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,14 +30,14 @@ function EditPatient() {
           gender: data.gender || 'Male',
           email: data.email || '',
           bloodGroup: data.bloodGroup || '',
-          insuranceId: data.insuranceId || ''
+          insuranceId: data.insuranceId || '',
         });
-        setLoading(false);
+        setFetching(false);
       })
       .catch((err) => {
-        console.error("Error fetching patient for edit:", err);
+        console.error('Error fetching patient for edit:', err);
         setError('Failed to load patient details.');
-        setLoading(false);
+        setFetching(false);
       });
   }, [id]);
 
@@ -42,64 +47,66 @@ function EditPatient() {
 
   const handleUpdate = (e) => {
     e.preventDefault();
-    setLoading(true);
+    setSaving(true);
     setError('');
     setSuccess('');
 
-    API.patch(`/patient/patch/${id}`, formData)
+    const payload = {
+      ...formData,
+      insuranceId:
+        formData.insuranceId && Number(formData.insuranceId) !== 0
+          ? Number(formData.insuranceId)
+          : null,
+    };
+
+    API.patch(`/patient/patch/${id}`, payload)
       .then(() => {
         setSuccess('Patient updated successfully! Redirecting...');
-        setTimeout(() => {
-          navigate('/patients');
-        }, 1200); // 1.2 seconds baad khud hi redirect ho jayega
+        setTimeout(() => navigate('/patients'), 1200);
       })
       .catch((err) => {
-        console.error("Error updating patient:", err);
+        console.error('Error updating patient:', err);
         setError('Failed to update patient.');
-        setLoading(false);
+        setSaving(false);
       });
   };
 
-  if (loading) return <div className="p-8 text-center text-blue-600 dark:text-blue-400 font-semibold bg-gray-100 dark:bg-gray-900 min-h-screen flex items-center justify-center">Loading patient details...</div>;
+  if (fetching) {
+    return (
+      <div className="p-10 text-center font-semibold text-blue-600 dark:text-teal-300">
+        Loading patient details...
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 sm:p-6 lg:p-8 flex justify-center items-center transition-colors duration-200">
-      <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-lg shadow-md max-w-md w-full border border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-6 text-center">Edit Patient (ID: {id})</h2>
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="w-full max-w-xl mx-auto bg-white dark:bg-ink-800 border border-gray-200 dark:border-ink-700 rounded-2xl shadow-sm p-5 md:p-7">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-5 text-center">
+          Edit Patient (ID: {id})
+        </h2>
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/35 border-l-4 border-red-500 p-4 mb-4">
+          <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 rounded-xl p-3 mb-4">
             <p className="text-red-700 dark:text-red-300 text-sm font-medium">{error}</p>
           </div>
         )}
-
         {success && (
-          <div className="bg-green-50 dark:bg-green-900/35 border-l-4 border-green-500 p-4 mb-4">
+          <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-900 rounded-xl p-3 mb-4">
             <p className="text-green-700 dark:text-green-300 text-sm font-medium">{success}</p>
           </div>
         )}
 
         <form onSubmit={handleUpdate} className="space-y-4">
           <div>
-            <label className="block text-gray-700 dark:text-gray-300 text-sm font-semibold mb-1">Patient Name</label>
-            <input
-              type="text"
-              name="patientName"
-              value={formData.patientName}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-            />
+            <label className={labelClass}>Patient Name</label>
+            <input type="text" name="patientName" value={formData.patientName} onChange={handleChange}
+              required className={inputClass} />
           </div>
 
           <div>
-            <label className="block text-gray-700 dark:text-gray-300 text-sm font-semibold mb-1">Gender</label>
-            <select
-              name="gender"
-              value={formData.gender}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-            >
+            <label className={labelClass}>Gender</label>
+            <select name="gender" value={formData.gender} onChange={handleChange} className={inputClass}>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
               <option value="Other">Other</option>
@@ -107,51 +114,35 @@ function EditPatient() {
           </div>
 
           <div>
-            <label className="block text-gray-700 dark:text-gray-300 text-sm font-semibold mb-1">Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-            />
+            <label className={labelClass}>Email</label>
+            <input type="email" name="email" value={formData.email} onChange={handleChange}
+              required className={inputClass} />
           </div>
 
           <div>
-            <label className="block text-gray-700 dark:text-gray-300 text-sm font-semibold mb-1">Blood Group</label>
-            <input
-              type="text"
-              name="bloodGroup"
-              value={formData.bloodGroup}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-            />
+            <label className={labelClass}>Blood Group</label>
+            <input type="text" name="bloodGroup" value={formData.bloodGroup} onChange={handleChange}
+              required className={inputClass} />
           </div>
 
           <div>
-            <label className="block text-gray-700 dark:text-gray-300 text-sm font-semibold mb-1">Insurance ID</label>
-            <input
-              type="number"
-              name="insuranceId"
-              value={formData.insuranceId}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-            />
+            <label className={labelClass}>Insurance ID</label>
+            <input type="number" name="insuranceId" value={formData.insuranceId} onChange={handleChange}
+              className={inputClass} />
           </div>
 
-          <div className="flex gap-4 pt-4">
+          <div className="flex gap-3 pt-2">
             <button
               type="submit"
-              className="w-full bg-yellow-500 text-white py-2 rounded-lg font-semibold hover:bg-yellow-600 transition"
+              disabled={saving}
+              className="flex-1 h-12 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-60 text-white rounded-xl font-semibold transition"
             >
-              Update Patient
+              {saving ? 'Updating...' : 'Update Patient'}
             </button>
             <button
               type="button"
               onClick={() => navigate('/patients')}
-              className="w-full bg-gray-500 dark:bg-gray-600 text-white py-2 rounded-lg font-semibold hover:bg-gray-600 dark:hover:bg-gray-700 transition"
+              className="flex-1 h-12 bg-slate-500 hover:bg-slate-600 dark:bg-slate-600 dark:hover:bg-slate-700 text-white rounded-xl font-semibold transition"
             >
               Cancel
             </button>

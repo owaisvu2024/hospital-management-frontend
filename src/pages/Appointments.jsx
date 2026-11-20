@@ -2,18 +2,35 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../services/api';
 
+const STATUS_STYLE = {
+  PENDING: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  CONFIRMED: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
+  COMPLETED: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300',
+  CANCELLED: 'bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-300',
+};
+
+function StatusPill({ status }) {
+  return (
+    <span
+      className={`px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${
+        STATUS_STYLE[status] || 'bg-gray-100 text-gray-600 dark:bg-ink-700 dark:text-slate-300'
+      }`}
+    >
+      {status}
+    </span>
+  );
+}
+
 function Appointments() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(''); // 🌟 Success notification banner state
-  
-  // Pagination states
-  const [page, setPage] = useState(0);      
-  const [size, setSize] = useState(5);      
-  const [totalPages, setTotalPages] = useState(0); 
+  const [success, setSuccess] = useState('');
 
-  // Search state
+  const [page, setPage] = useState(0);
+  const [size] = useState(5);
+  const [totalPages, setTotalPages] = useState(0);
+
   const [appointmentId, setAppointmentId] = useState('');
   const [searchedAppointment, setSearchedAppointment] = useState(null);
 
@@ -23,12 +40,12 @@ function Appointments() {
     setLoading(true);
     API.get(`/appointment/getall?page=${page}&size=${size}`)
       .then((response) => {
-        setAppointments(response.data.content);      
-        setTotalPages(response.data.totalPages);  
+        setAppointments(response.data.content);
+        setTotalPages(response.data.totalPages);
         setLoading(false);
       })
       .catch((err) => {
-        console.error("Error fetching appointments:", err);
+        console.error('Error fetching appointments:', err);
         setError('Failed to load appointment records.');
         setLoading(false);
       });
@@ -38,23 +55,23 @@ function Appointments() {
     fetchAppointments();
   }, [page, size]);
 
-  // Delete Appointment
   const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to delete this appointment?')) {
       API.delete(`/appointment/delete/${id}`)
         .then(() => {
           setSuccess('Appointment deleted successfully!');
-          setTimeout(() => setSuccess(''), 3000); // 3 seconds baad auto-clear
-          fetchAppointments(); 
+          setTimeout(() => setSuccess(''), 3000);
+          setSearchedAppointment(null);
+          setAppointmentId('');
+          fetchAppointments();
         })
         .catch((err) => {
-          console.error("Error deleting appointment:", err);
+          console.error('Error deleting appointment:', err);
           setError('Failed to delete appointment.');
         });
     }
   };
 
-  // Search Appointment by ID
   const handleSearch = (e) => {
     e.preventDefault();
     if (!appointmentId) {
@@ -67,183 +84,178 @@ function Appointments() {
         setError('');
       })
       .catch((err) => {
-        console.error("Appointment not found", err);
+        console.error('Appointment not found', err);
         setError('Appointment with this ID was not found.');
         setSearchedAppointment(null);
       });
   };
 
+  const rows = searchedAppointment ? [searchedAppointment] : appointments;
+
+  const editBtn =
+    'h-9 px-3 rounded-lg text-sm font-semibold border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-ink-700 transition';
+  const delBtn =
+    'h-9 px-3 rounded-lg text-sm font-semibold border border-red-300 dark:border-red-900 text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950 transition';
+  const pageBtn = (disabled) =>
+    `h-10 px-4 rounded-xl text-sm font-semibold text-white transition ${
+      disabled ? 'bg-gray-300 dark:bg-ink-700 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+    }`;
+
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 pt-4 p-3 sm:p-6 lg:p-8 transition-colors duration-200">
-      <div className="max-w-6xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-        
-        {/* Header & Actions */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">Appointments Management Hub</h1>
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
-            <button
-              onClick={() => navigate('/add-appointment')}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition text-center w-full sm:w-auto"
-            >
-              + Book New Appointment
-            </button>
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="bg-gray-700 dark:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 dark:hover:bg-gray-700 transition text-center w-full sm:w-auto"
-            >
-              Back to Dashboard
-            </button>
-          </div>
+    <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-5">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Appointments</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400">Book and track patient visits</p>
         </div>
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="hidden md:inline-flex h-11 items-center px-4 rounded-xl font-semibold bg-gray-700 dark:bg-ink-700 text-white hover:bg-gray-800 dark:hover:bg-ink-800 transition"
+        >
+          Back to Dashboard
+        </button>
+        <button
+          onClick={() => navigate('/add-appointment')}
+          className="h-11 px-4 rounded-xl font-semibold bg-green-600 hover:bg-green-700 text-white transition whitespace-nowrap"
+        >
+          + Book<span className="hidden sm:inline"> Appointment</span>
+        </button>
+      </div>
 
-        {/* Success & Error Banners */}
-        {success && (
-          <div className="bg-green-50 dark:bg-green-900/35 border-l-4 border-green-500 p-3 mb-4">
-            <p className="text-green-700 dark:text-green-300 text-sm font-medium">{success}</p>
-          </div>
+      {success && (
+        <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-900 rounded-xl p-3 mb-4">
+          <p className="text-green-700 dark:text-green-300 text-sm font-medium">{success}</p>
+        </div>
+      )}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 rounded-xl p-3 mb-4">
+          <p className="text-red-700 dark:text-red-300 text-sm font-medium">{error}</p>
+        </div>
+      )}
+
+      {/* Search */}
+      <form onSubmit={handleSearch} className="flex gap-2 mb-5">
+        <input
+          type="number"
+          placeholder="Search by appointment ID"
+          value={appointmentId}
+          onChange={(e) => setAppointmentId(e.target.value)}
+          className="flex-1 min-w-0 h-12 px-4 rounded-xl border border-gray-300 dark:border-ink-700 bg-white dark:bg-ink-800 text-gray-800 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-teal-400"
+        />
+        <button
+          type="submit"
+          className="h-12 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition"
+        >
+          Search
+        </button>
+        {searchedAppointment && (
+          <button
+            type="button"
+            onClick={() => { setSearchedAppointment(null); setAppointmentId(''); setError(''); }}
+            className="h-12 px-4 rounded-xl bg-gray-400 dark:bg-ink-700 hover:bg-gray-500 text-white font-semibold transition"
+          >
+            Clear
+          </button>
         )}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/35 border-l-4 border-red-500 p-3 mb-4">
-            <p className="text-red-700 dark:text-red-300 text-sm font-medium">{error}</p>
-          </div>
-        )}
+      </form>
 
-        {/* Search Bar */}
-        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 mb-6">
-          <input
-            type="number"
-            placeholder="Search by Appointment ID..."
-            value={appointmentId}
-            onChange={(e) => setAppointmentId(e.target.value)}
-            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-          />
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              className="flex-1 sm:flex-none bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
-            >
-              Search
-            </button>
-            {searchedAppointment && (
-              <button
-                type="button"
-                onClick={() => { setSearchedAppointment(null); setAppointmentId(''); setError(''); }}
-                className="flex-1 sm:flex-none bg-gray-400 dark:bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-500 dark:hover:bg-gray-700 transition"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        </form>
+      {rows.length === 0 && (
+        <div className="bg-white dark:bg-ink-800 border border-gray-200 dark:border-ink-700 rounded-2xl p-8 text-center text-gray-500 dark:text-slate-400">
+          {loading ? 'Loading appointments...' : 'No appointments available.'}
+        </div>
+      )}
 
-        {/* Appointments Table Container with Horizontal Scrolling Support */}
-        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-          <table className="min-w-full text-left border-collapse text-xs sm:text-sm">
+      {/* Desktop table */}
+      {rows.length > 0 && (
+        <div className="hidden md:block bg-white dark:bg-ink-800 border border-gray-200 dark:border-ink-700 rounded-2xl overflow-hidden">
+          <table className="w-full text-left text-sm">
             <thead>
-              <tr className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 uppercase">
-                <th className="py-3 px-3 sm:px-4 whitespace-nowrap">ID</th>
-                <th className="py-3 px-3 sm:px-4 whitespace-nowrap">Date</th>
-                <th className="py-3 px-3 sm:px-4 whitespace-nowrap">Reason</th>
-                <th className="py-3 px-3 sm:px-4 whitespace-nowrap">Status</th>
-                <th className="py-3 px-3 sm:px-4 whitespace-nowrap">Patient ID</th>
-                <th className="py-3 px-3 sm:px-4 whitespace-nowrap">Doctor ID</th>
-                <th className="py-3 px-3 sm:px-4 text-center whitespace-nowrap">Actions</th>
+              <tr className="bg-gray-100 dark:bg-ink-900 text-gray-600 dark:text-slate-400 uppercase text-xs tracking-wide">
+                <th className="py-3 px-5">ID</th>
+                <th className="py-3 px-5">Date</th>
+                <th className="py-3 px-5">Reason</th>
+                <th className="py-3 px-5">Status</th>
+                <th className="py-3 px-5">Patient ID</th>
+                <th className="py-3 px-5">Doctor ID</th>
+                <th className="py-3 px-5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {searchedAppointment ? (
-                <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                  <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{searchedAppointment.appointmentId}</td>
-                  <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{searchedAppointment.appointmentDate}</td>
-                  <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{searchedAppointment.reason}</td>
-                  <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{searchedAppointment.status}</td>
-                  <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{searchedAppointment.patientId}</td>
-                  <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{searchedAppointment.doctorId}</td>
-                  <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => navigate(`/edit-appointment/${searchedAppointment.appointmentId}`)}
-                        className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 text-xs sm:text-sm"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(searchedAppointment.appointmentId)}
-                        className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-xs sm:text-sm"
-                      >
-                        Delete
-                      </button>
+            <tbody className="divide-y divide-gray-200 dark:divide-ink-700">
+              {rows.map((a) => (
+                <tr key={a.appointmentId} className="hover:bg-gray-50 dark:hover:bg-ink-700/40">
+                  <td className="py-3 px-5 text-gray-500 dark:text-slate-400">{a.appointmentId}</td>
+                  <td className="py-3 px-5 font-semibold text-gray-800 dark:text-slate-100 whitespace-nowrap">{a.appointmentDate}</td>
+                  <td className="py-3 px-5 text-gray-800 dark:text-slate-200">{a.reason}</td>
+                  <td className="py-3 px-5"><StatusPill status={a.status} /></td>
+                  <td className="py-3 px-5 text-gray-500 dark:text-slate-400">{a.patientId}</td>
+                  <td className="py-3 px-5 text-gray-500 dark:text-slate-400">{a.doctorId}</td>
+                  <td className="py-3 px-5">
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => navigate(`/edit-appointment/${a.appointmentId}`)} className={editBtn}>Edit</button>
+                      <button onClick={() => handleDelete(a.appointmentId)} className={delBtn}>Delete</button>
                     </div>
                   </td>
                 </tr>
-              ) : appointments.length > 0 ? (
-                appointments.map((a) => (
-                  <tr key={a.appointmentId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{a.appointmentId}</td>
-                    <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{a.appointmentDate}</td>
-                    <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{a.reason}</td>
-                    <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{a.status}</td>
-                    <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{a.patientId}</td>
-                    <td className="py-3 px-3 sm:px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{a.doctorId}</td>
-                    <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => navigate(`/edit-appointment/${a.appointmentId}`)}
-                          className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 text-xs sm:text-sm"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(a.appointmentId)}
-                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-xs sm:text-sm"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="7" className="py-4 text-center text-gray-500 dark:text-gray-400">
-                    {loading ? 'Loading appointments...' : 'No appointments available.'}
-                  </td>
-                </tr>
-              )}
+              ))}
             </tbody>
           </table>
         </div>
+      )}
 
-        {/* Pagination Controls */}
-        {!searchedAppointment && totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button
-              disabled={page === 0}
-              onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
-              className={`w-full sm:w-auto px-4 py-2 rounded-lg font-semibold text-white ${
-                page === 0 ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-              }`}
+      {/* Mobile cards */}
+      {rows.length > 0 && (
+        <div className="md:hidden space-y-3">
+          {rows.map((a) => (
+            <div
+              key={a.appointmentId}
+              className="bg-white dark:bg-ink-800 border border-gray-200 dark:border-ink-700 rounded-2xl p-4 space-y-3"
             >
-              Previous
-            </button>
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 shrink-0 rounded-full flex items-center justify-center text-lg bg-purple-100 dark:bg-purple-400/15">
+                  📅
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 dark:text-white">{a.appointmentDate}</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">Appointment #{a.appointmentId}</div>
+                </div>
+                <StatusPill status={a.status} />
+              </div>
+              <div className="text-sm text-gray-700 dark:text-slate-300">{a.reason}</div>
+              <div className="text-xs text-gray-500 dark:text-slate-400">
+                Patient ID {a.patientId} · Doctor ID {a.doctorId}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => navigate(`/edit-appointment/${a.appointmentId}`)} className={`flex-1 h-10 ${editBtn}`}>Edit</button>
+                <button onClick={() => handleDelete(a.appointmentId)} className={`flex-1 h-10 ${delBtn}`}>Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-            <span className="text-gray-700 dark:text-gray-300 font-medium text-sm sm:text-base">
-              Page {page + 1} of {totalPages}
-            </span>
-
-            <button
-              disabled={page + 1 >= totalPages}
-              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages - 1))}
-              className={`w-full sm:w-auto px-4 py-2 rounded-lg font-semibold text-white ${
-                page + 1 >= totalPages ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-              }`}
-            >
-              Next
-            </button>
-          </div>
-        )}
-
-      </div>
+      {/* Pagination */}
+      {!searchedAppointment && totalPages > 1 && (
+        <div className="flex items-center justify-between gap-3 mt-6">
+          <button
+            disabled={page === 0}
+            onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
+            className={pageBtn(page === 0)}
+          >
+            Previous
+          </button>
+          <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
+            Page {page + 1} of {totalPages}
+          </span>
+          <button
+            disabled={page + 1 >= totalPages}
+            onClick={() => setPage((prev) => Math.min(prev + 1, totalPages - 1))}
+            className={pageBtn(page + 1 >= totalPages)}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }
